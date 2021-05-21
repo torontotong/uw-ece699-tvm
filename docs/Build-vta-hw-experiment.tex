@@ -1,0 +1,151 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{listings}
+
+\title{Build SVM From Scratch}
+\author{Tong Liu }
+\date{May 2021}
+
+\begin{document}
+
+\maketitle
+
+\section{Install Source}
+git clone --recursive https://github.com/apache/tvm tvm\\
+
+\section{Build the shared Library}
+\subsection{Run below commands make sure  have right packages}
+\begin{itemize}
+    \item sudo apt-get update\\
+    \item sudo apt-get install -y python3 python3-dev python3-setuptools gcc libtinfo-dev zlib1g-dev build-essential cmake libedit-dev libxml2-dev\\
+\end{itemize}
+
+\subsection{The minimal building requirements are:}
+\begin{itemize}
+    \item A recent c++ compiler supporting C++ 14 (g++-5 or higher)
+    \item CMake 3.5 or higher
+    \item We highly recommend to build with LLVM to enable all the features.
+    \item If you want to use CUDA, CUDA toolkit version >= 8.0 is required. If you are upgrading from an older version, make sure you purge the older version and reboot after installation.
+    \item On macOS, you may want to install Homebrew <https://brew.sh> to easily install and manage dependencies.
+\end{itemize}
+
+\subsection{Use cmake to build the library. The configuration of TVM can be modified by config.cmake}
+\begin{itemize}
+\item First, check the cmake in your system. If you do not have cmake, you can obtain the latest version from official website
+\item \textbf{Create a build directory, copy the cmake/config.cmake to the directory}.\\
+    mkdir build\\
+    cp cmake/config.cmake build\\
+\item Edit build/config.cmake to customize the compilation options
+\begin{itemize}
+    \item On macOS, for some versions of Xcode, you need to add -lc++abi in the LDFLAGS or you’ll get link errors.
+    \item Change set(USE\_CUDA OFF) to set(USE\_CUDA ON) to enable CUDA backend. Do the same for other backends and libraries you want to build for (OpenCL, RCOM, METAL, VULKAN, …).
+    \item \textbf{To help with debugging, ensure the embedded graph executor and debugging functions are enabled with set(USE\_GRAPH\_EXECUTOR ON) and set(USE\_PROFILER ON)}
+\end{itemize}
+
+\item TVM requires LLVM for for CPU codegen. We highly recommend you to build with the LLVM support on.
+    \begin{itemize}
+        \item LLVM 4.0 or higher is needed for build with LLVM. Note that version of LLVM from default apt may lower than 4.0.
+        \item Since LLVM takes long time to build from source, download pre-built version of LLVM as below script:
+        \textbf{To install a specific version of LLVM:}
+        \begin{lstlisting}
+wget https://apt.llvm.org/llvm.sh
+chmod +x llvm.sh
+sudo ./llvm.sh 12
+        \end{lstlisting}
+            \begin{itemize}
+                \item Unzip to a certain location, modify build/config.cmake to add set(USE\_LLVM /path/to/your/llvm/bin/llvm-config)
+                \item You can also directly \textbf{set(USE\_LLVM llvm-config-12)} and let cmake search for a usable version of LLVM.
+            \end{itemize}
+    
+    \end{itemize}
+\item Then build tvm and related libraries.\\
+    cd build\\
+    cmake ..\\
+    make -j4\\
+\item Add below items to file ~/.bashrc\\
+export TVM\_HOME=/path to tvm\\
+export PYTHONPATH=\$TVM\_HOME/python:\${PYTHONPATH}\\
+export LD\_LIBRARY\_PATH="/usr/local/lib"\\
+
+\section{VTA TSIM Installation}
+TSIM is a cycle-accurate hardware simulation environment that can be invoked and managed directly from TVM. It aims to enable cycle accurate simulation of deep learning accelerators including VTA. This simulation environment can be used in both OSX and Linux.\\
+\subsection{Linux Dependencies}
+\subsubsection{Add `sbt` to package manager Ubuntu}
+\begin{lstlisting}[language=bash]
+echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" | 
+sudo tee /etc/apt/sources.list.d/sbt.list
+echo "deb https://repo.scala-sbt.org/scalasbt/debian /" | 
+sudo tee /etc/apt/sources.list.d/sbt_old.list
+curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=
+0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | sudo apt-key add
+sudo apt-get update
+sudo apt-get install sbt
+sudo apt install verilator
+\end{lstlisting}
+\subsection{Run VTA TSIM Examples}
+    \textbf{Note: We need to modify ..\//tsim\_example\//CMakeLists.txt file, change below part from -std=c++11 to -std=c++14}
+\begin{lstlisting}
+set(CMAKE_CXX_FLAGS "-O2 -Wall -fPIC -fvisibility=hidden -std=c++14")
+\end{lstlisting}
+    \begin{itemize}
+        \item Test Verilog backend
+        \begin{itemize}
+            \item Go to vta-hw-root/apps/tsim\_example\\
+            \item Run `make`\\
+        \end{itemize}
+        \item Test Chisel3 backend\\
+        \begin{itemize}
+            \item Go to vta-hw-root/apps/tsim\_example\\
+            \item Run `make run\_chisel`\\
+        \end{itemize}
+    \end{itemize}
+
+\section{Build VTA Simulator}
+\begin{itemize}
+    \item Set environment
+        \begin{itemize}
+            \item export TVM\_PATH=path to TVM root\\
+            \item export VTA\_HW\_PATH=\$TVM\_PATH/3rdparty/vta-hw\\
+        \end{itemize}
+    \item The VTA functional simulation library needs to be enabled when building TVM
+        \begin{lstlisting}[language=bash]
+            cd tvm-root
+            mkdir build
+            cp cmake/config.cmake build/.
+            echo 'set(USE\_VTA\_FSIM ON)' \>\> build/config.cmake
+            cd build && cmake .. && make -j4
+        \end{lstlisting}
+\end{itemize}
+    \item Testing your VTA Simulation Setup\\
+    python tvm\_root/vta/tests/python/integration/test\_benchmark\_topi\_conv2d.py
+\end{itemize}
+
+\section{Build VTA Bitstream}
+\subsection{Make VTA}
+\subsection{Issues and solution}
+\subsubsection{Assign clock\_0 to vta\_0}
+\subsubsection{Warning message (19238): "Incomplete power management settings for a VID device"}
+\textbf{Workaround/Fix}\\
+To work around this problem, add the required SmartVID Quartus Settings File(.qsf) assignments into the <tvm>/build/hardware/intel/quartus/de10-pro.../soc\_system.qsf file to avoid FPGA configuration failure
+\begin{lstlisting}
+set_global_assignment -name USE_PWRMGT_SCL SDM_IO14
+set_global_assignment -name USE_PWRMGT_SDA SDM_IO11
+set_global_assignment -name VID_OPERATION_MODE "PMBUS MASTER"
+set_global_assignment -name PWRMGT_BUS_SPEED_MODE "400 KHZ"
+set_global_assignment -name PWRMGT_SLAVE_DEVICE_TYPE OTHER
+set_global_assignment -name PWRMGT_SLAVE_DEVICE0_ADDRESS 47
+set_global_assignment -name PWRMGT_SLAVE_DEVICE1_ADDRESS 48
+set_global_assignment -name PWRMGT_SLAVE_DEVICE2_ADDRESS 00
+set_global_assignment -name PWRMGT_SLAVE_DEVICE3_ADDRESS 00
+set_global_assignment -name PWRMGT_SLAVE_DEVICE4_ADDRESS 00
+set_global_assignment -name PWRMGT_SLAVE_DEVICE5_ADDRESS 00
+set_global_assignment -name PWRMGT_SLAVE_DEVICE6_ADDRESS 00
+set_global_assignment -name PWRMGT_SLAVE_DEVICE7_ADDRESS 00
+set_global_assignment -name PWRMGT_PAGE_COMMAND_ENABLE ON
+set_global_assignment -name PWRMGT_VOLTAGE_OUTPUT_FORMAT "AUTO DISCOVERY"
+set_global_assignment -name PWRMGT_TRANSLATED_VOLTAGE_VALUE_UNIT VOLTS
+\end{lstlisting}
+
+
+
+\end{document}

@@ -1,0 +1,31 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{listings}
+
+\title{Build Linux Kernel For DE10-pro}
+
+
+\begin{document}
+
+\maketitle
+
+\section{Build Linux Kernel For DE10-pro}
+\subsection{Install toolchain}
+\begin{lstlisting}
+$ cd ~
+$ wget https://releases.linaro.org/archive/13.12/components/toolchain/\
+binaries/gcc-linaro-arm-linux-gnueabihf-4.8-2013.12_linux.tar.bz2
+$ tar xjf gcc-linaro-arm-linux-gnueabihf-4.8-2013.12_linux.tar.bz2
+$ export CROSS_COMPILE=~/gcc-linaro-arm-linux-gnueabihf-4.8-2013.12_linux/\
+bin/arm-linux-gnueabihf-
+\end{lstlisting}
+
+\subsection{Build Linux kernel}
+\begin{lstlisting}
+$ cd ~/linux-socfpga
+$ export ARCH=arm
+$ make socfpga_defconfig
+$ make zImage
+\end{lstlisting}
+
+\end{document}

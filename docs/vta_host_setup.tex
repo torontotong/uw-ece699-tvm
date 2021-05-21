@@ -1,0 +1,29 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{listings}
+
+\title{VTA Host setup}
+
+
+\begin{document}
+
+\maketitle
+
+\section{Host setup For Vta FPGA}
+\begin{lstlisting}
+export TVM_PATH=<path to TVM root>
+export VTA_HW_PATH=$TVM_PATH/3rdparty/vta-hw
+cd <tvm-root>
+mkdir build
+cp cmake/config.cmake build/.
+echo 'set(USE_VTA_FPGA ON)' >> build/config.cmake
+cd build && cmake .. && make -j4
+export PYTHONPATH=/path/to/vta/python:${PYTHONPATH}
+export VTA_RPC_HOST=de10pro board ip address
+export VTA_RPC_PORT=9091
+cd <tvm root>
+cp 3rdparty/vta-hw/config/de10pro.json \
+3rdparty/vta-hw/config/vta_config.json
+\end{lstlisting}
+
+\end{document}

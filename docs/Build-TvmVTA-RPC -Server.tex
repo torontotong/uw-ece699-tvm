@@ -1,0 +1,73 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{listings}
+
+\title{Build TVM-VTA RPC Server}
+
+
+\begin{document}
+
+\maketitle
+
+
+\section{Checkout tvm from github to DE10Pro board}
+\begin{lstlisting}
+Power On DE10Pro board, monitoring and wait until linux bootup via
+sudo minicom -D /dev/ttyUSB0
+within minicom get de10pro ip address by command:
+ifconfig 
+sshfs terasic@de10-pro-ip:/home/terasic mount-point/
+cd mount-point/
+mkdir workspace
+cd workspace
+git clone --recursive https://github.com/apache/tvm tvm
+
+\end{lstlisting}
+\section{Build tvm on de10pro board}
+\subsection{Modify tvm/cmake/module/VTA.cmake}
+\begin{lstlisting}
+...
+elseif(PYTHON)
+  target_include_directories(vta SYSTEM PUBLIC 3rdparty)
+  target_include_directories(vta SYSTEM PUBLIC
+  "/usr/local/intelFPGA_lite/18.1/embedded/ds-5/sw/gcc/\
+  arm-linux-gnueabihf/include")
+  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
+elseif(${VTA_TARGET} STREQUAL "intelfocl")  # Intel OpenCL for FPGA rules
+  target_include_directories(vta PUBLIC 3rdparty)
+  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+
+...
+\end{lstlisting}
+
+\subsection{run make on de10pro board}
+In tvm root folder run below commands
+\begin{lstlisting}
+mkdir build
+cd build
+cmake ..
+make -j4
+\end{lstlisting}
+
+\section{Setup and Start RPC}
+After build tvm successfully, run below command to start RPC server on DE1-Pro board.
+\subsection{Add De10pro Suppport in rpc\_server.py module }
+Insert below code after line 76
+\begin{lstlisting}
+...
+elif env.TARGET == "de10pro":
+      # Load the de10pro program function.
+      load_vta_dll()
+...
+\end{lstlisting}
+\begin{lstlisting}
+add  below line to ~/.bashrc
+export PYTHONPATH=$PYTHONPATH:/usr/bin:Path totvm/tvm/python
+source ~/.bashrc
+pip3 install decorator
+pip3 install cloudpickle
+./apps/vta_rpc/start_rpc_server.sh
+\end{lstlisting}
+
+
+\end{document}
